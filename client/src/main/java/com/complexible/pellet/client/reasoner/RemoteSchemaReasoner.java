@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import com.clarkparsia.pellet.service.ServiceDecoder;
 import com.clarkparsia.pellet.service.ServiceEncoder;
-import com.clarkparsia.pellet.service.json.GenericJsonMessage;
 import com.clarkparsia.pellet.service.messages.ExplainRequest;
 import com.clarkparsia.pellet.service.messages.ExplainResponse;
 import com.clarkparsia.pellet.service.messages.QueryRequest;
@@ -21,12 +20,11 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.gson.JsonObject;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.ResponseBody;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import org.mindswap.pellet.utils.Pair;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
@@ -34,7 +32,7 @@ import org.semanticweb.owlapi.model.OWLLogicalEntity;
 import org.semanticweb.owlapi.model.OWLObject;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.reasoner.NodeSet;
-import retrofit.Call;
+import retrofit2.Call;
 
 /**
  * Implementation of a {@link SchemaReasoner} using the Pellet Service API remote reasoner.
@@ -50,7 +48,9 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 	final ServiceEncoder mEncoder = new ProtoServiceEncoder();
 	final ServiceDecoder mDecoder = new ProtoServiceDecoder();
 
-	public static UUID CLIENT_ID = UUID.randomUUID();
+	private static final UUID CLIENT_ID = UUID.randomUUID();
+
+	private final UUID mClientID;
 
 	private LoadingCache<Pair<QueryType, OWLLogicalEntity>, NodeSet<?>> cache = CacheBuilder.newBuilder()
 		                   .maximumSize(1024)
@@ -65,9 +65,14 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 	@Inject
 	public RemoteSchemaReasoner(final PelletService thePelletService,
 	                            @Assisted final OWLOntology theOntology) {
-		Preconditions.checkNotNull(theOntology, "the Ontology must not be Null.");
+		this(thePelletService, CLIENT_ID, theOntology);
+	}
 
+	public RemoteSchemaReasoner(final PelletService thePelletService,
+	                            final UUID theClientID,
+	                            final OWLOntology theOntology) {
 		mService = thePelletService;
+		mClientID = theClientID;
 
 		mOntologyIri = theOntology.getOntologyID()
 		                          .getOntologyIRI()
@@ -92,7 +97,7 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 
 			Call<ResponseBody> queryCall = mService.query(mOntologyIri,
 			                                              theQueryType,
-			                                              CLIENT_ID,
+			                                              mClientID,
 			                                              mDecoder.getMediaType(),
 			                                              aReqBody);
 			final ResponseBody aRespBody = ClientTools.executeCall(queryCall);
@@ -109,18 +114,18 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 	@Override
 	public Set<Set<OWLAxiom>> explain(final OWLAxiom axiom, final int limit) {
 		try {
-			System.out.println("Explaining " + axiom);
+			// System.out.println("Explaining " + axiom);
 			RequestBody aReqBody = RequestBody.create(MediaType.parse(mEncoder.getMediaType()),
 			                                          mEncoder.encode(new ExplainRequest(axiom)));
 
 			Call<ResponseBody> explainCall = mService.explain(mOntologyIri,
 			                                                  limit,
-			                                                  CLIENT_ID,
+			                                                  mClientID,
 			                                                  mDecoder.getMediaType(),
 			                                                  aReqBody);
 			final ResponseBody aRespBody = ClientTools.executeCall(explainCall);
 			ExplainResponse explainResponse = mDecoder.explainResponse(aRespBody.bytes());
-			System.out.println("Explanation " + explainResponse.getAxiomSets());
+			// System.out.println("Explanation " + explainResponse.getAxiomSets());
 			return explainResponse.getAxiomSets();
 		}
 		catch (Exception e) {
@@ -137,10 +142,7 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 			RequestBody aReqBody = RequestBody.create(MediaType.parse(mEncoder.getMediaType()),
 			                                          mEncoder.encode(new UpdateRequest(additions, removals)));
 
-			Call<GenericJsonMessage> updateCall = mService.update(mOntologyIri,
-			                                                      CLIENT_ID,
-			                                                      GenericJsonMessage.MIME_TYPE,
-			                                                      aReqBody);
+			Call<Void> updateCall = mService.update(mOntologyIri, mClientID, aReqBody);
 			ClientTools.executeCall(updateCall);
 		}
 		catch (Exception e) {
@@ -150,15 +152,12 @@ public class RemoteSchemaReasoner implements SchemaReasoner {
 
 	@Override
 	public int version() {
-		final Call<JsonObject> versionCall = mService.version(mOntologyIri,
-		                                                      CLIENT_ID,
-		                                                      GenericJsonMessage.MIME_TYPE);
-		final JsonObject aRespObj = ClientTools.executeCall(versionCall);
-
-		return aRespObj.get("version").getAsInt();
+		final Call<Integer> versionCall = mService.version(mOntologyIri, mClientID);
+		return ClientTools.executeCall(versionCall);
 	}
 
 	@Override
 	public void close() throws Exception {
+		cache.invalidateAll();
 	}
 }

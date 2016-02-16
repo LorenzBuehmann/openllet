@@ -12,7 +12,7 @@ import org.protege.owl.server.api.client.Client;
 /**
  * @author Edgar Rodriguez-Diaz
  */
-public abstract class PelletServerTest extends ProtegeServerTest {
+public class PelletServerTest extends ProtegeServerTest {
 
 	protected static Injector injector;
 	protected static PelletServer pelletServer;
@@ -29,7 +29,7 @@ public abstract class PelletServerTest extends ProtegeServerTest {
 	public void before() throws Exception {
 		super.before();
 
-		mClient = provideClient();
+		mClient = createClient(RMI_PORT, REDMOND);
 	}
 
 	public void stopPelletServer() {
@@ -37,10 +37,8 @@ public abstract class PelletServerTest extends ProtegeServerTest {
 		pelletServer = null;
 	}
 
-	public abstract Client provideClient() throws Exception;
-
 	@After
-	public void after() {
+	public void after() throws Exception {
 		stopPelletServer();
 		super.after();
 	}

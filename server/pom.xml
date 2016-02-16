@@ -39,7 +39,13 @@
 		<dependency>
 			<groupId>edu.stanford.protege</groupId>
 			<artifactId>org.protege.owl.server</artifactId>
-			<version>2.0.6-SNAPSHOT</version>
+			<version>3.0.0-SNAPSHOT</version>
+			<exclusions>
+				<exclusion>
+					<groupId>net.sourceforge.owlapi</groupId>
+					<artifactId>owlapi-osgidistribution</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>io.undertow</groupId>
@@ -50,11 +56,6 @@
 			<groupId>io.undertow</groupId>
 			<artifactId>undertow-servlet</artifactId>
 			<version>1.2.11.Final</version>
-		</dependency>
-		<dependency>
-			<groupId>org.quartz-scheduler</groupId>
-			<artifactId>quartz</artifactId>
-			<version>2.2.2</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
