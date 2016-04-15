@@ -10,8 +10,7 @@ import com.clarkparsia.pellet.server.PelletServerModule;
 import com.clarkparsia.pellet.server.protege.ProtegeServerConfiguration;
 import com.complexible.pellet.client.ClientModule;
 import com.complexible.pellet.client.ClientTools;
-import com.complexible.pellet.client.api.PelletService;
-import com.complexible.pellet.client.reasoner.RemoteSchemaReasoner;
+import com.complexible.pellet.client.PelletService;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import retrofit2.Call;
@@ -125,7 +124,7 @@ public class PelletServer extends PelletCmdApp {
 	private Configuration getServerConfig() throws IOException {
 		if (serverConfig == null) {
 			String configFile = options.getOption("config").getValueAsString();
-			if( configFile != null ) {
+			if( configFile == null ) {
 				configFile = "server.properties";
 			}
 			serverConfig = new ProtegeServerConfiguration(new File(configFile));
